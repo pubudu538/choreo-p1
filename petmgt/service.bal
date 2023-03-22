@@ -1,30 +1,26 @@
 import ballerina/http;
-// import ballerina/io;
-// import ballerina/lang.runtime;
-// import ballerina/task;
+import ballerina/io;
+import ballerina/lang.runtime;
+import ballerina/task;
 
 // Creates a job to be executed by the scheduler.
-// class Job {
+class Job {
 
-//     *task:Job;
-//     int i = 1;
+    *task:Job;
+    int i = 1;
 
-//     // Executes this function when the scheduled trigger fires.
-//     public function execute() {
-//         self.i += 1;
-//         io:println("MyCounter: ", self.i);
-//     }
+    // Executes this function when the scheduled trigger fires.
+    public function execute() {
+        self.i += 1;
+        io:println("MyCounter: ", self.i);
+    }
 
-//     isolated function init(int i) {
-//         self.i = i;
-//     }
-// }
-
-
-@display {
-	label: "petmgt",
-	id: "petmgt-a5df9625-cdac-4544-b050-c5df9b5b7943"
+    isolated function init(int i) {
+        self.i = i;
+    }
 }
+
+
 service / on new http:Listener(9090) {
 
     # A resource for generating greetings
@@ -40,24 +36,20 @@ service / on new http:Listener(9090) {
 }
 
 
+// Define your main function
+public function main() {
+    io:println("Starting the service...");
 
-
-
-
-// // Define your main function
-// public function main() {
-//     io:println("Starting the service...");
-
-//     do {
+    do {
 	
-// 	    task:JobId id = check task:scheduleJobRecurByFrequency(new Job(0), 1);
-//         runtime:sleep(9);
-//         check task:unscheduleJob(id);
-//     } on fail var e {
-//     	io:println("Starting the service...",e);
-//     }
+	    task:JobId id = check task:scheduleJobRecurByFrequency(new Job(0), 1);
+        runtime:sleep(9);
+        check task:unscheduleJob(id);
+    } on fail var e {
+    	io:println("Starting the service...",e);
+    }
 
-//     io:println("stopping the service...");
-// }
+    io:println("stopping the service...");
+}
 
 
