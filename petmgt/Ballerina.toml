@@ -1,0 +1,9 @@
+[package]
+org = "PubuduGunatilaka"
+name = "petmgt"
+version = "1.0.0"
+export = ["petmgt"]
+distribution = "2201.3.1"
+
+[build-options]
+observabilityIncluded = true
