@@ -21,10 +21,10 @@ import ballerina/http;
 // }
 
 
-// @display {
-// 	label: "petmgt",
-// 	id: "petmgt-a5df9625-cdac-4544-b050-c5df9b5b7943"
-// }
+@display {
+	label: "petmgt",
+	id: "petmgt-a5df9625-cdac-4544-b050-c5df9b5b7943"
+}
 service / on new http:Listener(9090) {
 
     # A resource for generating greetings
