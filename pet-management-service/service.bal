@@ -48,19 +48,28 @@ service / on new http:Listener(9090) {
 
     # Update a pet
     # + petId - ID of the pet
-    # + updatedPet - updated pet details
+    # + updatedPetItem - updated pet details
     # + return - Pet details or not found 
-    resource function put pets/[string petId](@http:Payload PetItem updatedPet) returns record {|*http:Ok;|}|error? {
+    resource function put pets/[string petId](@http:Payload PetItem updatedPetItem) returns Pet|http:NotFound|error? {
         
-        pets[petId] = {...updatedPet, id: petId};
-        return {body: pets[petId]};
+        Pet? pet = pets[petId];
+        if pet is () {
+            return http:NOT_FOUND;
+        }
+        pets[petId] = {...updatedPetItem, id: petId};
+
+        return pets[petId];
     }
 
     # Delete a pet
     # + petId - ID of the pet
     # + return - Ok response or error
-    resource function delete pets/[string petId]() returns record {|*http:Ok;|}|error? {
+    resource function delete pets/[string petId]() returns record {|*http:NoContent;|}|error? {
 
+        Pet? pet = pets[petId];
+        if pet is () {
+            return http:NO_CONTENT;
+        }
         _ = pets.remove(petId);
         return {};
     }
