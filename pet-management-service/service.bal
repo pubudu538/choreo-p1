@@ -1,6 +1,4 @@
 import ballerina/http;
-import ballerina/time;
-import ballerina/regex;
 import ballerina/uuid;
 
 type PetItem record {|
