@@ -18,28 +18,51 @@ map<Pet> pets = {};
 # bound to port `9090`.
 service / on new http:Listener(9090) {
 
-    # A resource for getting the pets in the system.
+    # Get all pets
     # + return - List of pets or error
     resource function get pets() returns Pet[]|error? {
         return pets.toArray();
     }
 
-    # A resource for creating a new pet entry in the system.
+    # Create a new pet
     # + newPet - basic pet details
     # + return - created pet record or error
     resource function post pets(@http:Payload PetItem newPet) returns record {|*http:Created;|}|error? {
-        
+
         string petId = uuid:createType1AsString();
         pets[petId] = {...newPet, id: petId};
-
-        return {body:  pets[petId]};
+        return {body: pets[petId]};
     }
 
-    # A resource for deleting a pet entry in the system.
-    # + id - id of the pet to delete
-    # + return - ok reponse or error
-    resource function delete books(string id) returns record {|*http:Ok;|}|error? {
-        _ = pets.remove(id);
+    # Get a pet by ID
+    # + petId - ID of the pet
+    # + return - Pet details or not found 
+    resource function get pets/[string petId]() returns Pet|http:NotFound {
+
+        Pet? pet = pets[petId];
+        if pet is () {
+            return http:NOT_FOUND;
+        }
+        return pet;
+    }
+
+    # Update a pet
+    # + petId - ID of the pet
+    # + updatedPet - updated pet details
+    # + return - Pet details or not found 
+    resource function put pets/[string petId](@http:Payload PetItem updatedPet) returns record {|*http:Ok;|}|error? {
+        
+        pets[petId] = {...updatedPet, id: petId};
+        return {body: pets[petId]};
+    }
+
+    # Delete a pet
+    # + petId - ID of the pet
+    # + return - Ok response or error
+    resource function delete pets/[string petId]() returns record {|*http:Ok;|}|error? {
+
+        _ = pets.remove(petId);
         return {};
     }
+
 }
