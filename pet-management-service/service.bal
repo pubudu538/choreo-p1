@@ -1,6 +1,6 @@
 import ballerina/http;
-import ballerina/io;
 import ballerina/uuid;
+import ballerina/jwt;
 
 type PetItem record {|
     string name;
@@ -24,11 +24,17 @@ service / on new http:Listener(9090) {
     # + return - List of pets or error
     resource function get pets(http:Request request) returns Pet[]|error? {
 
-        table<Pet> highPaidEmployees = from Pet pet in pets
-            where pet.owner == "John"
+        string|error owner = getOwner(request);
+
+        if owner is error {
+            return owner;
+        }
+
+        table<Pet> getPetsByOwner = from Pet pet in pets
+            where pet.owner == owner
             select pet;
 
-        return highPaidEmployees.toArray();
+        return getPetsByOwner.toArray();
     }
 
     # Create a new pet
@@ -36,23 +42,30 @@ service / on new http:Listener(9090) {
     # + return - created pet record or error
     resource function post pets(@http:Payload PetItem newPet, http:Request request) returns record {|*http:Created;|}|error? {
 
-        var jwt = request.getHeader("x-jwt-assertion");
+        string|error owner = getOwner(request);
 
-        if (jwt is string) {
-            io:println("JWT: " + jwt);
+        if owner is error {
+            return owner;
         }
-        string petId = uuid:createType1AsString();
-        pets.put({id: petId, owner: "John", ...newPet});
 
-        return {body: pets["John", petId]};
+        string petId = uuid:createType1AsString();
+        pets.put({id: petId, owner: owner, ...newPet});
+
+        return {body: pets[owner, petId]};
     }
 
     # Get a pet by ID
     # + petId - ID of the pet
     # + return - Pet details or not found 
-    resource function get pets/[string petId]() returns Pet|http:NotFound {
+    resource function get pets/[string petId](http:Request request) returns Pet|http:NotFound|error? {
 
-        Pet? pet = pets["John", petId];
+        string|error owner = getOwner(request);
+
+        if owner is error {
+            return owner;
+        }
+
+        Pet? pet = pets[owner, petId];
         if pet is () {
             return http:NOT_FOUND;
         }
@@ -63,28 +76,59 @@ service / on new http:Listener(9090) {
     # + petId - ID of the pet
     # + updatedPetItem - updated pet details
     # + return - Pet details or not found 
-    resource function put pets/[string petId](@http:Payload PetItem updatedPetItem) returns Pet|http:NotFound|error? {
+    resource function put pets/[string petId](@http:Payload PetItem updatedPetItem, http:Request request) returns Pet|http:NotFound|error? {
 
-        Pet? pet = pets["John", petId];
+        string|error owner = getOwner(request);
+
+        if owner is error {
+            return owner;
+        }
+
+        Pet? pet = pets[owner, petId];
         if pet is () {
             return http:NOT_FOUND;
         }
-        pets.put({id: petId, owner: "John", ...updatedPetItem});
+        pets.put({id: petId, owner: owner, ...updatedPetItem});
 
-        return pets["John", petId];
+        return pets[owner, petId];
     }
 
     # Delete a pet
     # + petId - ID of the pet
     # + return - Ok response or error
-    resource function delete pets/[string petId]() returns http:NoContent|http:NotFound|error? {
+    resource function delete pets/[string petId](http:Request request) returns http:NoContent|http:NotFound|error? {
 
-        Pet? pet = pets["John", petId];
+        string|error owner = getOwner(request);
+
+        if owner is error {
+            return owner;
+        }
+
+        Pet? pet = pets[owner, petId];
         if pet is () {
             return http:NOT_FOUND;
         }
-        _ = pets.remove(["John", petId]);
+        _ = pets.remove([owner, petId]);
         return http:NO_CONTENT;
     }
 
+}
+
+function getOwner(http:Request request) returns string|error {
+
+    var jwtHeader = request.getHeader("x-jwt-assertion");
+
+    if jwtHeader is http:HeaderNotFoundError {
+        return jwtHeader;
+    }
+
+    [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(jwtHeader);
+    string? subClaim = payload.sub;
+
+    if subClaim is () {
+        subClaim = "Test_Key_User";
+    }
+    string owner = <string>subClaim;
+
+    return owner;
 }
