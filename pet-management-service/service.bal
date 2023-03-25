@@ -40,7 +40,7 @@ service / on new http:Listener(9090) {
     # Create a new pet
     # + newPet - basic pet details
     # + return - created pet record or error
-    resource function post pets(@http:Payload PetItem newPet, http:Request request) returns record {|*http:Created;|}|error? {
+    resource function post pets(http:Request request, @http:Payload PetItem newPet) returns record {|*http:Created;|}|error? {
 
         string|error owner = getOwner(request);
 
@@ -76,7 +76,7 @@ service / on new http:Listener(9090) {
     # + petId - ID of the pet
     # + updatedPetItem - updated pet details
     # + return - Pet details or not found 
-    resource function put pets/[string petId](@http:Payload PetItem updatedPetItem, http:Request request) returns Pet|http:NotFound|error? {
+    resource function put pets/[string petId](http:Request request, @http:Payload PetItem updatedPetItem) returns Pet|http:NotFound|error? {
 
         string|error owner = getOwner(request);
 
