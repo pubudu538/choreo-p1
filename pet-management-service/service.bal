@@ -1,5 +1,6 @@
 import ballerina/http;
 import ballerina/uuid;
+import ballerina/io;
 import ballerina/jwt;
 
 type PetItem record {|
@@ -130,5 +131,8 @@ function getOwner(http:Request request) returns string|error {
     }
     string owner = <string>subClaim;
 
+    io:println("Request: ", request.rawPath);
+    io:println("Owner: ", owner);
+    io:println("jwt: ", jwtHeader);
     return owner;
 }
