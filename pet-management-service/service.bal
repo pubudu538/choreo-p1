@@ -1,7 +1,7 @@
 import ballerina/http;
 import ballerina/uuid;
-import ballerina/io;
 import ballerina/jwt;
+import ballerina/io;
 
 type PetItem record {|
     string name;
@@ -23,9 +23,9 @@ service / on new http:Listener(9090) {
 
     # Get all pets
     # + return - List of pets or error
-    resource function get pets(http:Request request) returns Pet[]|error? {
+    resource function get pets(http:Headers headers) returns Pet[]|error? {
 
-        string|error owner = getOwner(request);
+        string|error owner = getOwner(headers);
 
         if owner is error {
             return owner;
@@ -41,9 +41,9 @@ service / on new http:Listener(9090) {
     # Create a new pet
     # + newPet - basic pet details
     # + return - created pet record or error
-    resource function post pets(http:Request request, @http:Payload PetItem newPet) returns record {|*http:Created;|}|error? {
+    resource function post pets(http:Headers headers, @http:Payload PetItem newPet) returns record {|*http:Created;|}|error? {
 
-        string|error owner = getOwner(request);
+        string|error owner = getOwner(headers);
 
         if owner is error {
             return owner;
@@ -58,9 +58,9 @@ service / on new http:Listener(9090) {
     # Get a pet by ID
     # + petId - ID of the pet
     # + return - Pet details or not found 
-    resource function get pets/[string petId](http:Request request) returns Pet|http:NotFound|error? {
+    resource function get pets/[string petId](http:Headers headers) returns Pet|http:NotFound|error? {
 
-        string|error owner = getOwner(request);
+        string|error owner = getOwner(headers);
 
         if owner is error {
             return owner;
@@ -77,9 +77,9 @@ service / on new http:Listener(9090) {
     # + petId - ID of the pet
     # + updatedPetItem - updated pet details
     # + return - Pet details or not found 
-    resource function put pets/[string petId](http:Request request, @http:Payload PetItem updatedPetItem) returns Pet|http:NotFound|error? {
+    resource function put pets/[string petId](http:Headers headers, @http:Payload PetItem updatedPetItem) returns Pet|http:NotFound|error? {
 
-        string|error owner = getOwner(request);
+        string|error owner = getOwner(headers);
 
         if owner is error {
             return owner;
@@ -97,9 +97,9 @@ service / on new http:Listener(9090) {
     # Delete a pet
     # + petId - ID of the pet
     # + return - Ok response or error
-    resource function delete pets/[string petId](http:Request request) returns http:NoContent|http:NotFound|error? {
+    resource function delete pets/[string petId](http:Headers headers) returns http:NoContent|http:NotFound|error? {
 
-        string|error owner = getOwner(request);
+        string|error owner = getOwner(headers);
 
         if owner is error {
             return owner;
@@ -113,12 +113,30 @@ service / on new http:Listener(9090) {
         return http:NO_CONTENT;
     }
 
+    resource function post receiver(http:Request request) returns string|error {
+        stream<byte[], io:Error?> streamer = check request.getByteStream();
+
+        // Retrieve the thumbnail field from the request
+        // byte[] thumbnail = check <byte[]>formData.getField("thumbnail").getBlob();
+        // Writes the incoming stream to a file using the `io:fileWriteBlocksFromStream` API
+        // by providing the file location to which the content should be written.
+        check io:fileWriteBlocksFromStream("./files/ReceivedFile.pdf", streamer);
+        check streamer.close();
+
+        var formData = check request.getFormParams();
+
+        var bodyParts = check request.getBodyParts();
+
+        io:println(bodyParts);
+        io:println(formData);
+        return "File Received!";
+    }
+
 }
 
-function getOwner(http:Request request) returns string|error {
+function getOwner(http:Headers headers) returns string|error {
 
-    var jwtHeader = request.getHeader("x-jwt-assertion");
-
+    var jwtHeader = headers.getHeader("x-jwt-assertion");
     if jwtHeader is http:HeaderNotFoundError {
         return jwtHeader;
     }
@@ -131,8 +149,5 @@ function getOwner(http:Request request) returns string|error {
     }
     string owner = <string>subClaim;
 
-    io:println("Request: ", request.rawPath);
-    io:println("Owner: ", owner);
-    io:println("jwt: ", jwtHeader);
     return owner;
 }
