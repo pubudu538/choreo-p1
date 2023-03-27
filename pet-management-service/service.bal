@@ -220,6 +220,7 @@ function getOwner(http:Headers headers) returns string|error {
     return owner;
 }
 
+
 function handleContent(mime:Entity bodyPart) returns Thumbnail|error? {
 
     var mediaType = mime:getMediaType(bodyPart.getContentType());
