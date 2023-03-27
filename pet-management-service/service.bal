@@ -7,6 +7,7 @@ type PetItem record {|
     string name;
     string breed;
     string dateOfBirth;
+    Vaccination[] vaccinations?;
 |};
 
 type Pet record {|
@@ -17,6 +18,13 @@ type Pet record {|
 type Thumbnail record {|
     string fileName;
     string content;
+|};
+
+type Vaccination record {|
+    string name;
+    string lastVaccinationDate;
+    string nextVaccinationDate?;
+    boolean enableAlerts?;
 |};
 
 type PetRecord record {|
@@ -219,7 +227,6 @@ function getOwner(http:Headers headers) returns string|error {
 
     return owner;
 }
-
 
 function handleContent(mime:Entity bodyPart) returns Thumbnail|error? {
 
