@@ -46,7 +46,6 @@ service / on new http:Listener(9090) {
     resource function get pets(http:Headers headers) returns Pet[]|error? {
 
         string|error owner = getOwner(headers);
-
         if owner is error {
             return owner;
         }
