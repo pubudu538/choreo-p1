@@ -54,7 +54,7 @@ service / on new http:Listener(9090) {
         petRecords.forEach(function(PetRecord petRecord) {
 
             if petRecord.owner == owner {
-                Pet pet = {id: petRecord.id, name: petRecord.name, breed: petRecord.breed, dateOfBirth: petRecord.dateOfBirth};
+                Pet pet = getPetDetails(petRecord);
                 filteredPets.push(pet);
             }
 
@@ -78,7 +78,7 @@ service / on new http:Listener(9090) {
         petRecords.put({id: petId, owner: owner, ...newPet});
 
         PetRecord petRecord = <PetRecord>petRecords[owner, petId];
-        Pet pet = {id: petRecord.id, name: petRecord.name, breed: petRecord.breed, dateOfBirth: petRecord.dateOfBirth};
+        Pet pet = getPetDetails(petRecord);
 
         return pet;
     }
@@ -99,8 +99,7 @@ service / on new http:Listener(9090) {
             return http:NOT_FOUND;
         }
 
-        Pet pet = {id: petRecord.id, name: petRecord.name, breed: petRecord.breed, dateOfBirth: petRecord.dateOfBirth};
-
+        Pet pet = getPetDetails(petRecord);
         return pet;
     }
 
@@ -123,7 +122,7 @@ service / on new http:Listener(9090) {
         petRecords.put({id: petId, owner: owner, ...updatedPetItem});
 
         PetRecord petRecord = <PetRecord>petRecords[owner, petId];
-        Pet pet = {id: petRecord.id, name: petRecord.name, breed: petRecord.breed, dateOfBirth: petRecord.dateOfBirth};
+        Pet pet = getPetDetails(petRecord);
 
         return pet;
     }
@@ -252,4 +251,17 @@ function handleContent(mime:Entity bodyPart) returns Thumbnail|error? {
     }
 
     return error("Unsupported media type found");
+}
+
+function getPetDetails(PetRecord petRecord) returns Pet {
+
+    Pet pet = {
+        id: petRecord.id,
+        name: petRecord.name,
+        breed: petRecord.breed,
+        dateOfBirth: petRecord.dateOfBirth,
+        vaccinations: petRecord.vaccinations
+    };
+
+    return pet;
 }
