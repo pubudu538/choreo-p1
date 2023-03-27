@@ -1,7 +1,7 @@
 import ballerina/http;
 import ballerina/uuid;
 import ballerina/jwt;
-import ballerina/io;
+import ballerina/mime;
 
 type PetItem record {|
     string name;
@@ -12,10 +12,22 @@ type PetItem record {|
 type Pet record {|
     *PetItem;
     readonly string id;
-    readonly string owner;
 |};
 
-table<Pet> key(owner, id) pets = table [];
+type Thumbnail record {|
+    string fileName;
+    string content;
+|};
+
+type PetRecord record {|
+    *Pet;
+    readonly string owner;
+    record {
+        *Thumbnail;
+    } thumbnail?;
+|};
+
+table<PetRecord> key(owner, id) petRecords = table [];
 
 # A service representing a network-accessible API
 # bound to port `9090`.
@@ -31,17 +43,23 @@ service / on new http:Listener(9090) {
             return owner;
         }
 
-        table<Pet> getPetsByOwner = from Pet pet in pets
-            where pet.owner == owner
-            select pet;
+        Pet[] filteredPets = [];
+        petRecords.forEach(function(PetRecord petRecord) {
 
-        return getPetsByOwner.toArray();
+            if petRecord.owner == owner {
+                Pet pet = {id: petRecord.id, name: petRecord.name, breed: petRecord.breed, dateOfBirth: petRecord.dateOfBirth};
+                filteredPets.push(pet);
+            }
+
+        });
+
+        return filteredPets;
     }
 
     # Create a new pet
     # + newPet - basic pet details
     # + return - created pet record or error
-    resource function post pets(http:Headers headers, @http:Payload PetItem newPet) returns record {|*http:Created;|}|error? {
+    resource function post pets(http:Headers headers, @http:Payload PetItem newPet) returns Pet|http:Created|error? {
 
         string|error owner = getOwner(headers);
 
@@ -50,9 +68,12 @@ service / on new http:Listener(9090) {
         }
 
         string petId = uuid:createType1AsString();
-        pets.put({id: petId, owner: owner, ...newPet});
+        petRecords.put({id: petId, owner: owner, ...newPet});
 
-        return {body: pets[owner, petId]};
+        PetRecord petRecord = <PetRecord>petRecords[owner, petId];
+        Pet pet = {id: petRecord.id, name: petRecord.name, breed: petRecord.breed, dateOfBirth: petRecord.dateOfBirth};
+
+        return pet;
     }
 
     # Get a pet by ID
@@ -66,10 +87,13 @@ service / on new http:Listener(9090) {
             return owner;
         }
 
-        Pet? pet = pets[owner, petId];
-        if pet is () {
+        PetRecord? petRecord = petRecords[owner, petId];
+        if petRecord is () {
             return http:NOT_FOUND;
         }
+
+        Pet pet = {id: petRecord.id, name: petRecord.name, breed: petRecord.breed, dateOfBirth: petRecord.dateOfBirth};
+
         return pet;
     }
 
@@ -85,13 +109,16 @@ service / on new http:Listener(9090) {
             return owner;
         }
 
-        Pet? pet = pets[owner, petId];
-        if pet is () {
+        PetRecord? oldePetRecord = petRecords[owner, petId];
+        if oldePetRecord is () {
             return http:NOT_FOUND;
         }
-        pets.put({id: petId, owner: owner, ...updatedPetItem});
+        petRecords.put({id: petId, owner: owner, ...updatedPetItem});
 
-        return pets[owner, petId];
+        PetRecord petRecord = <PetRecord>petRecords[owner, petId];
+        Pet pet = {id: petRecord.id, name: petRecord.name, breed: petRecord.breed, dateOfBirth: petRecord.dateOfBirth};
+
+        return pet;
     }
 
     # Delete a pet
@@ -105,31 +132,72 @@ service / on new http:Listener(9090) {
             return owner;
         }
 
-        Pet? pet = pets[owner, petId];
-        if pet is () {
+        PetRecord? oldePetRecord = petRecords[owner, petId];
+        if oldePetRecord is () {
             return http:NOT_FOUND;
         }
-        _ = pets.remove([owner, petId]);
+        _ = petRecords.remove([owner, petId]);
         return http:NO_CONTENT;
     }
 
-    resource function post receiver(http:Request request) returns string|error {
-        stream<byte[], io:Error?> streamer = check request.getByteStream();
+    resource function put pets/[string petId]/thumbnail(http:Request request, http:Headers headers)
+    returns http:Ok|http:NotFound|http:BadRequest|error {
 
-        // Retrieve the thumbnail field from the request
-        // byte[] thumbnail = check <byte[]>formData.getField("thumbnail").getBlob();
-        // Writes the incoming stream to a file using the `io:fileWriteBlocksFromStream` API
-        // by providing the file location to which the content should be written.
-        check io:fileWriteBlocksFromStream("./files/ReceivedFile.pdf", streamer);
-        check streamer.close();
+        string|error owner = getOwner(headers);
 
-        var formData = check request.getFormParams();
+        if owner is error {
+            return owner;
+        }
 
         var bodyParts = check request.getBodyParts();
+        foreach var part in bodyParts {
 
-        io:println(bodyParts);
-        io:println(formData);
-        return "File Received!";
+            Thumbnail|error? handleContentResult = handleContent(part);
+            if handleContentResult is error {
+                return http:BAD_REQUEST;
+            }
+
+            PetRecord? petRecord = petRecords[owner, petId];
+            if petRecord is () {
+                return http:NOT_FOUND;
+            }
+
+            petRecord.thumbnail = handleContentResult;
+            petRecords.put(petRecord);
+        }
+
+        return http:OK;
+    }
+
+    resource function get pets/[string petId]/thumbnail(http:Headers headers) returns http:Response|http:NotFound|error {
+
+        string|error owner = getOwner(headers);
+
+        if owner is error {
+            return owner;
+        }
+
+        PetRecord? petRecord = petRecords[owner, petId];
+        if petRecord is () {
+            return http:NOT_FOUND;
+        }
+
+        http:Response response = new;
+        if petRecord.thumbnail is () {
+            return response;
+        }
+
+        Thumbnail thumbnail = <Thumbnail>petRecord.thumbnail;
+        string fileName = thumbnail.fileName;
+
+        byte[] encodedContent = thumbnail.content.toBytes();
+        byte[] base64Decoded = <byte[]>(check mime:base64Decode(encodedContent));
+
+        response.setHeader("Content-Type", "application/octet-stream");
+        response.setHeader("Content-Disposition", "attachment; filename=" + fileName);
+        response.setBinaryPayload(base64Decoded);
+
+        return response;
     }
 
 }
@@ -150,4 +218,31 @@ function getOwner(http:Headers headers) returns string|error {
     string owner = <string>subClaim;
 
     return owner;
+}
+
+function handleContent(mime:Entity bodyPart) returns Thumbnail|error? {
+
+    var mediaType = mime:getMediaType(bodyPart.getContentType());
+    mime:ContentDisposition contentDisposition = bodyPart.getContentDisposition();
+    string fileName = contentDisposition.fileName;
+
+    if mediaType is mime:MediaType {
+
+        string baseType = mediaType.getBaseType();
+        if mime:IMAGE_JPEG == baseType || mime:IMAGE_GIF == baseType || mime:IMAGE_PNG == baseType {
+
+            byte[] bytes = check bodyPart.getByteArray();
+            byte[] base64Encoded = <byte[]>(check mime:base64Encode(bytes));
+            string base64EncodedString = check string:fromBytes(base64Encoded);
+
+            Thumbnail thumbnail = {
+                fileName: fileName,
+                content: base64EncodedString
+            };
+
+            return thumbnail;
+        }
+    }
+
+    return error("Unsupported media type found");
 }
