@@ -1,9 +1,8 @@
 import ballerina/http;
-import ballerina/uuid;
 import ballerina/jwt;
 import ballerina/mime;
 
-type PetItem record {|
+public type PetItem record {|
     string name;
     string breed;
     string dateOfBirth;
@@ -13,14 +12,15 @@ type PetItem record {|
 type Pet record {|
     *PetItem;
     readonly string id;
+    readonly string owner;
 |};
 
-type Thumbnail record {|
+public type Thumbnail record {|
     string fileName;
     string content;
 |};
 
-type Vaccination record {|
+public type Vaccination record {|
     string name;
     string lastVaccinationDate;
     string nextVaccinationDate?;
@@ -29,7 +29,6 @@ type Vaccination record {|
 
 type PetRecord record {|
     *Pet;
-    readonly string owner;
     record {
         *Thumbnail;
     } thumbnail?;
@@ -50,17 +49,7 @@ service / on new http:Listener(9090) {
             return owner;
         }
 
-        Pet[] filteredPets = [];
-        petRecords.forEach(function(PetRecord petRecord) {
-
-            if petRecord.owner == owner {
-                Pet pet = getPetDetails(petRecord);
-                filteredPets.push(pet);
-            }
-
-        });
-
-        return filteredPets;
+        return getPets(owner);
     }
 
     # Create a new pet
@@ -69,17 +58,11 @@ service / on new http:Listener(9090) {
     resource function post pets(http:Headers headers, @http:Payload PetItem newPet) returns Pet|http:Created|error? {
 
         string|error owner = getOwner(headers);
-
         if owner is error {
             return owner;
         }
 
-        string petId = uuid:createType1AsString();
-        petRecords.put({id: petId, owner: owner, ...newPet});
-
-        PetRecord petRecord = <PetRecord>petRecords[owner, petId];
-        Pet pet = getPetDetails(petRecord);
-
+        Pet|error pet = addPet(newPet, owner);
         return pet;
     }
 
@@ -89,18 +72,15 @@ service / on new http:Listener(9090) {
     resource function get pets/[string petId](http:Headers headers) returns Pet|http:NotFound|error? {
 
         string|error owner = getOwner(headers);
-
         if owner is error {
             return owner;
         }
 
-        PetRecord? petRecord = petRecords[owner, petId];
-        if petRecord is () {
+        Pet|()|error result = getPetById(owner, petId);
+        if result is () {
             return http:NOT_FOUND;
         }
-
-        Pet pet = getPetDetails(petRecord);
-        return pet;
+        return result;
     }
 
     # Update a pet
@@ -110,21 +90,15 @@ service / on new http:Listener(9090) {
     resource function put pets/[string petId](http:Headers headers, @http:Payload PetItem updatedPetItem) returns Pet|http:NotFound|error? {
 
         string|error owner = getOwner(headers);
-
         if owner is error {
             return owner;
         }
 
-        PetRecord? oldePetRecord = petRecords[owner, petId];
-        if oldePetRecord is () {
+        Pet|()|error result = updatePetById(owner, petId, updatedPetItem);
+        if result is () {
             return http:NOT_FOUND;
         }
-        petRecords.put({id: petId, owner: owner, ...updatedPetItem});
-
-        PetRecord petRecord = <PetRecord>petRecords[owner, petId];
-        Pet pet = getPetDetails(petRecord);
-
-        return pet;
+        return result;
     }
 
     # Delete a pet
@@ -133,16 +107,16 @@ service / on new http:Listener(9090) {
     resource function delete pets/[string petId](http:Headers headers) returns http:NoContent|http:NotFound|error? {
 
         string|error owner = getOwner(headers);
-
         if owner is error {
             return owner;
         }
 
-        PetRecord? oldePetRecord = petRecords[owner, petId];
-        if oldePetRecord is () {
+        string|()|error result = deletePetById(owner, petId);
+        if result is () {
             return http:NOT_FOUND;
+        } else if result is error {
+            return result;
         }
-        _ = petRecords.remove([owner, petId]);
         return http:NO_CONTENT;
     }
 
@@ -156,20 +130,23 @@ service / on new http:Listener(9090) {
         }
 
         var bodyParts = check request.getBodyParts();
-        foreach var part in bodyParts {
-
-            Thumbnail|error? handleContentResult = handleContent(part);
+        Thumbnail thumbnail;
+        if bodyParts.length() == 0 {
+            thumbnail = {fileName: "", content: ""};
+        } else {
+            Thumbnail|error? handleContentResult = handleContent(bodyParts[0]);
             if handleContentResult is error {
                 return http:BAD_REQUEST;
             }
+            thumbnail = <Thumbnail>handleContentResult;
+        }
 
-            PetRecord? petRecord = petRecords[owner, petId];
-            if petRecord is () {
-                return http:NOT_FOUND;
-            }
+        string|()|error thumbnailByPetId = updateThumbnailByPetId(owner, petId, thumbnail);
 
-            petRecord.thumbnail = handleContentResult;
-            petRecords.put(petRecord);
+        if thumbnailByPetId is error {
+            return thumbnailByPetId;
+        } else if thumbnailByPetId is () {
+            return http:NOT_FOUND;
         }
 
         return http:OK;
@@ -253,15 +230,3 @@ function handleContent(mime:Entity bodyPart) returns Thumbnail|error? {
     return error("Unsupported media type found");
 }
 
-function getPetDetails(PetRecord petRecord) returns Pet {
-
-    Pet pet = {
-        id: petRecord.id,
-        name: petRecord.name,
-        breed: petRecord.breed,
-        dateOfBirth: petRecord.dateOfBirth,
-        vaccinations: petRecord.vaccinations
-    };
-
-    return pet;
-}
