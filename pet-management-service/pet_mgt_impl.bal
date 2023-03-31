@@ -29,7 +29,7 @@ function init() returns error? {
         }
     };
 
-    dbClient = check new ("jdbc:mysql://localhost:3306/PET_DB", options = options);
+    dbClient = new ("jdbc:mysql://localhost:3306/PET_DB", options = options);
 
     // dbClient = new ("localhostdd", "admin", "admin123", "petdb", 3306);
 
