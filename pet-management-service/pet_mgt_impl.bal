@@ -15,6 +15,7 @@ configurable int dbPort = 3306;
 configurable boolean useDB = true;
 
 final jdbc:Client|error dbClient;
+table<PetRecord> key(owner, id) petRecords = table [];
 
 // final mysql:Client|sql:Error dbClient;
 
@@ -47,11 +48,11 @@ function init() returns error? {
 
 }
 
-public function getConnection() returns jdbc:Client|error {
+function getConnection() returns jdbc:Client|error {
     return dbClient;
 }
 
-public function getPets(string owner) returns Pet[]|error {
+function getPets(string owner) returns Pet[]|error {
 
     Pet[] pets = [];
     if (useDB) {
@@ -68,7 +69,7 @@ public function getPets(string owner) returns Pet[]|error {
     return pets;
 }
 
-public function getPetById(string owner, string petId) returns Pet|()|error {
+function getPetById(string owner, string petId) returns Pet|()|error {
 
     if (useDB) {
         return dbGetPetByOwnerAndPetId(owner, petId);
@@ -81,7 +82,7 @@ public function getPetById(string owner, string petId) returns Pet|()|error {
     }
 }
 
-public function updatePetById(string owner, string petId, PetItem updatedPetItem) returns Pet|()|error {
+function updatePetById(string owner, string petId, PetItem updatedPetItem) returns Pet|()|error {
 
     if (useDB) {
         Pet|() oldPet = check dbGetPetByOwnerAndPetId(owner, petId);
@@ -102,7 +103,7 @@ public function updatePetById(string owner, string petId, PetItem updatedPetItem
     }
 }
 
-public function deletePetById(string owner, string petId) returns string|()|error {
+function deletePetById(string owner, string petId) returns string|()|error {
 
     if (useDB) {
         return dbDeletePetById(owner, petId);
@@ -116,7 +117,7 @@ public function deletePetById(string owner, string petId) returns string|()|erro
     }
 }
 
-public function addPet(PetItem petItem, string owner) returns Pet|error {
+function addPet(PetItem petItem, string owner) returns Pet|error {
 
     string petId = uuid:createType1AsString();
 
@@ -131,7 +132,7 @@ public function addPet(PetItem petItem, string owner) returns Pet|error {
     }
 }
 
-public function updateThumbnailByPetId(string owner, string petId, Thumbnail thumbnail) returns string|()|error {
+function updateThumbnailByPetId(string owner, string petId, Thumbnail thumbnail) returns string|()|error {
 
     if (useDB) {
 
@@ -169,6 +170,35 @@ public function updateThumbnailByPetId(string owner, string petId, Thumbnail thu
 
         }
         return "Thumbnail updated successfully";
+    }
+}
+
+function getThumbnailByPetId(string owner, string petId) returns Thumbnail|()|string|error {
+
+    if (useDB) {
+
+        Thumbnail|string|error getResult = dbGetThumbnailById(petId);
+
+        if getResult is error {
+            return getResult;
+        } else if getResult is string {
+            return getResult;
+        } else if getResult is Thumbnail {
+            return <Thumbnail>getResult;
+        }
+
+    } else {
+
+        PetRecord? petRecord = petRecords[owner, petId];
+        if petRecord is () {
+            return ();
+        }
+
+        Thumbnail? thumbnail = <Thumbnail?>petRecord.thumbnail;
+        if thumbnail is () {
+            return "No thumbnail found";
+        }
+        return <Thumbnail>thumbnail;
     }
 }
 
