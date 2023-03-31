@@ -8,9 +8,9 @@ service / on new http:Listener(9090) {
 
     # Get all pets
     # + return - List of pets or error
-    resource function get pets(@http:Header string x\-jwt\-assertion) returns Pet[]|error? {
+    resource function get pets(http:Headers headers) returns Pet[]|error? {
 
-        string|error owner = getOwner(x\-jwt\-assertion);
+        string|error owner = getOwner(headers);
         if owner is error {
             return owner;
         }
@@ -21,9 +21,9 @@ service / on new http:Listener(9090) {
     # Create a new pet
     # + newPet - basic pet details
     # + return - created pet record or error
-    resource function post pets(@http:Header string x\-jwt\-assertion, @http:Payload PetItem newPet) returns Pet|http:Created|error? {
+    resource function post pets(http:Headers headers, @http:Payload PetItem newPet) returns Pet|http:Created|error? {
 
-        string|error owner = getOwner(x\-jwt\-assertion);
+        string|error owner = getOwner(headers);
         if owner is error {
             return owner;
         }
@@ -35,9 +35,9 @@ service / on new http:Listener(9090) {
     # Get a pet by ID
     # + petId - ID of the pet
     # + return - Pet details or not found 
-    resource function get pets/[string petId](@http:Header string x\-jwt\-assertion) returns Pet|http:NotFound|error? {
+    resource function get pets/[string petId](http:Headers headers) returns Pet|http:NotFound|error? {
 
-        string|error owner = getOwner(x\-jwt\-assertion);
+        string|error owner = getOwner(headers);
         if owner is error {
             return owner;
         }
@@ -53,9 +53,9 @@ service / on new http:Listener(9090) {
     # + petId - ID of the pet
     # + updatedPetItem - updated pet details
     # + return - Pet details or not found 
-    resource function put pets/[string petId](@http:Header string x\-jwt\-assertion, @http:Payload PetItem updatedPetItem) returns Pet|http:NotFound|error? {
+    resource function put pets/[string petId](http:Headers headers, @http:Payload PetItem updatedPetItem) returns Pet|http:NotFound|error? {
 
-        string|error owner = getOwner(x\-jwt\-assertion);
+        string|error owner = getOwner(headers);
         if owner is error {
             return owner;
         }
@@ -70,9 +70,9 @@ service / on new http:Listener(9090) {
     # Delete a pet
     # + petId - ID of the pet
     # + return - Ok response or error
-    resource function delete pets/[string petId](@http:Header string x\-jwt\-assertion) returns http:NoContent|http:NotFound|error? {
+    resource function delete pets/[string petId](http:Headers headers) returns http:NoContent|http:NotFound|error? {
 
-        string|error owner = getOwner(x\-jwt\-assertion);
+        string|error owner = getOwner(headers);
         if owner is error {
             return owner;
         }
@@ -86,10 +86,10 @@ service / on new http:Listener(9090) {
         return http:NO_CONTENT;
     }
 
-    resource function put pets/[string petId]/thumbnail(http:Request request, @http:Header string x\-jwt\-assertion)
+    resource function put pets/[string petId]/thumbnail(http:Request request, http:Headers headers)
     returns http:Ok|http:NotFound|http:BadRequest|error {
 
-        string|error owner = getOwner(x\-jwt\-assertion);
+        string|error owner = getOwner(headers);
         if owner is error {
             return owner;
         }
@@ -117,9 +117,9 @@ service / on new http:Listener(9090) {
         return http:OK;
     }
 
-    resource function get pets/[string petId]/thumbnail(@http:Header string x\-jwt\-assertion) returns http:Response|http:NotFound|error {
+    resource function get pets/[string petId]/thumbnail(http:Headers headers) returns http:Response|http:NotFound|error {
 
-        string|error owner = getOwner(x\-jwt\-assertion);
+        string|error owner = getOwner(headers);
         if owner is error {
             return owner;
         }
@@ -133,7 +133,7 @@ service / on new http:Listener(9090) {
             return thumbnail;
         } else if thumbnail is string {
             return response;
-        } else if thumbnail is Thumbnail {
+        } else {
 
             string fileName = thumbnail.fileName;
             byte[] encodedContent = thumbnail.content.toBytes();
@@ -149,9 +149,14 @@ service / on new http:Listener(9090) {
 
 }
 
-function getOwner(@http:Header string x\-jwt\-assertion) returns string|error {
+function getOwner(http:Headers headers) returns string|error {
 
-    [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(x\-jwt\-assertion);
+    var jwtHeader = headers.getHeader("x-jwt-assertion");
+    if jwtHeader is http:HeaderNotFoundError {
+        return jwtHeader;
+    }
+
+    [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(jwtHeader);
     string? subClaim = payload.sub;
 
     if subClaim is () {

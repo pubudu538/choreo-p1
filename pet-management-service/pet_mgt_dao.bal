@@ -1,6 +1,4 @@
 import ballerinax/java.jdbc;
-// import ballerinax/mysql;
-import ballerinax/mysql.driver as _;
 import ballerina/sql;
 import ballerina/log;
 

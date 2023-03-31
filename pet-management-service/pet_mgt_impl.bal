@@ -1,51 +1,35 @@
-
 import ballerinax/java.jdbc;
-// import ballerinax/mysql;
+import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
-import ballerina/io;
 import ballerina/uuid;
-
-// import ballerina/sql;
+import ballerina/sql;
+import ballerina/log;
 
 configurable string dbHost = "localhost";
 configurable string dbUsername = "admin";
-configurable string dbPassword = "admin123";
-configurable string dbDatabase = "wso2am_db";
+configurable string dbPassword = "admin";
+configurable string dbDatabase = "PET_DB";
 configurable int dbPort = 3306;
-configurable boolean useDB = true;
 
-final jdbc:Client|error dbClient;
 table<PetRecord> key(owner, id) petRecords = table [];
-
-// final mysql:Client|sql:Error dbClient;
+final mysql:Client|sql:Error dbClient;
+boolean useDB = false;
 
 function init() returns error? {
 
-    jdbc:Options options = {
-        properties: {
-            allowPublicKeyRetrieval: true,
-            user: "root",
-            password: "root"
+    if dbHost != "localhost" {
+        useDB = true;
+    }
+    dbClient = new (dbHost, dbUsername, dbPassword, dbDatabase, dbPort);
+
+    if dbClient is sql:Error {
+        if (!useDB) {
+            log:printInfo("DB configurations are not given. Hence storing the data locally");
+        } else {
+            log:printError("DB configuraitons are not correct. Please check the configuration", 'error = <sql:Error>dbClient);
+            return error("DB configuraitons are not correct. Please check the configuration");
         }
-    };
-
-    dbClient = new ("jdbc:mysql://localhost:3306/PET_DB", options = options);
-
-    // dbClient = new ("localhostdd", "admin", "admin123", "petdb", 3306);
-
-    // if dbClient is sql:Error {
-    //     io:println("Error occured while creating the DB client", dbClient);
-    //     if (!useDB) {
-    //         io:println("UseDB is set to false and hence storing the data locally");
-    //     } else {
-    //         io:println("DB configuraitons are not correct. Please check the configuration");
-    //         return error("DB configuraitons are not correct. Please check the configuration");
-    //     }
-    // }
-
-    io:println("we are good");
-    io:println(dbClient);
-
+    }
 }
 
 function getConnection() returns jdbc:Client|error {
@@ -142,8 +126,6 @@ function updateThumbnailByPetId(string owner, string petId, Thumbnail thumbnail)
             return deleteResult;
         }
 
-        io:println(deleteResult);
-
         if thumbnail.fileName != "" {
             string|error result = dbAddThumbnailById(petId, thumbnail);
 
@@ -183,7 +165,7 @@ function getThumbnailByPetId(string owner, string petId) returns Thumbnail|()|st
             return getResult;
         } else if getResult is string {
             return getResult;
-        } else if getResult is Thumbnail {
+        } else {
             return <Thumbnail>getResult;
         }
 
