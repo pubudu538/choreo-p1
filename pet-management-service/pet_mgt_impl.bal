@@ -1,9 +1,10 @@
 import ballerinax/java.jdbc;
-import ballerinax/mysql;
+// import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
 import ballerina/uuid;
-import ballerina/sql;
-import ballerina/log;
+// import ballerina/sql;
+// import ballerina/log;
+import ballerina/io;
 
 configurable string dbHost = "localhost";
 configurable string dbUsername = "admin";
@@ -12,24 +13,40 @@ configurable string dbDatabase = "PET_DB";
 configurable int dbPort = 3306;
 
 table<PetRecord> key(owner, id) petRecords = table [];
-final mysql:Client|sql:Error dbClient;
+// final mysql:Client|sql:Error dbClient;
+final jdbc:Client|error dbClient;
 boolean useDB = false;
 
 function init() returns error? {
 
-    if dbHost != "localhost" {
-        useDB = true;
-    }
-    dbClient = new (dbHost, dbUsername, dbPassword, dbDatabase, dbPort);
+    // if dbHost != "localhost" {
+    //     useDB = true;
+    // }
 
-    if dbClient is sql:Error {
-        if (!useDB) {
-            log:printInfo("DB configurations are not given. Hence storing the data locally");
-        } else {
-            log:printError("DB configuraitons are not correct. Please check the configuration", 'error = <sql:Error>dbClient);
-            return error("DB configuraitons are not correct. Please check the configuration");
+    // sql:ConnectionPool connectionPool = {maxConnectionLifeTime: 31};
+    // dbClient = new (dbHost, dbUsername, dbPassword, dbDatabase, dbPort, connectionPool = connectionPool);
+
+    // if dbClient is sql:Error {
+    //     if (!useDB) {
+    //         log:printInfo("DB configurations are not given. Hence storing the data locally");
+    //     } else {
+    //         log:printError("DB configuraitons are not correct. Please check the configuration", 'error = <sql:Error>dbClient);
+    //         return error("DB configuraitons are not correct. Please check the configuration");
+    //     }
+    // }
+
+    jdbc:Options options = {
+        properties: {
+            user: dbUsername,
+            password: dbPassword,
+            autoReconnect: true
         }
-    }
+    };
+
+    dbClient = check new ("jdbc:mysql://" + dbHost + ":" + dbPort.toString() + "/" + dbDatabase, options = options);
+
+    io:println(dbClient);
+
 }
 
 function getConnection() returns jdbc:Client|error {
