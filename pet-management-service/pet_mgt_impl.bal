@@ -1,10 +1,8 @@
 import ballerinax/java.jdbc;
-// import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
 import ballerina/uuid;
-// import ballerina/sql;
-// import ballerina/log;
-import ballerina/io;
+import ballerina/sql;
+import ballerina/log;
 
 configurable string dbHost = "localhost";
 configurable string dbUsername = "admin";
@@ -13,40 +11,38 @@ configurable string dbDatabase = "PET_DB";
 configurable int dbPort = 3306;
 
 table<PetRecord> key(owner, id) petRecords = table [];
-// final mysql:Client|sql:Error dbClient;
 final jdbc:Client|error dbClient;
-boolean useDB = true;
+boolean useDB = false;
 
 function init() returns error? {
 
-    // if dbHost != "localhost" {
-    //     useDB = true;
-    // }
-
-    // sql:ConnectionPool connectionPool = {maxConnectionLifeTime: 31};
-    // dbClient = new (dbHost, dbUsername, dbPassword, dbDatabase, dbPort, connectionPool = connectionPool);
-
-    // if dbClient is sql:Error {
-    //     if (!useDB) {
-    //         log:printInfo("DB configurations are not given. Hence storing the data locally");
-    //     } else {
-    //         log:printError("DB configuraitons are not correct. Please check the configuration", 'error = <sql:Error>dbClient);
-    //         return error("DB configuraitons are not correct. Please check the configuration");
-    //     }
-    // }
+    if dbHost != "localhost" {
+        useDB = true;
+    }
 
     jdbc:Options options = {
         properties: {
-            user: dbUsername,
-            password: dbPassword,
-            autoReconnect: true
+            autoReconnect: true,
+            maxReconnects: 10,
+            connectTimeout: "5000",
+            socketTimeout: "5000"
         }
     };
 
-    dbClient = check new ("jdbc:mysql://" + dbHost + ":" + dbPort.toString() + "/" + dbDatabase, options = options);
+    dbClient = new ("jdbc:mysql://" + dbHost + ":" + dbPort.toString() + "/" + dbDatabase, dbUsername, dbPassword, options = options);
 
-    io:println(dbClient);
+    if dbClient is sql:Error {
+        if (!useDB) {
+            log:printInfo("DB configurations are not given. Hence storing the data locally");
+        } else {
+            log:printError("DB configuraitons are not correct. Please check the configuration", 'error = <sql:Error>dbClient);
+            return error("DB configuraitons are not correct. Please check the configuration");
+        }
+    }
 
+    if useDB {
+        log:printInfo("DB configurations are given. Hence storing the data in DB");
+    }
 }
 
 function getConnection() returns jdbc:Client|error {
