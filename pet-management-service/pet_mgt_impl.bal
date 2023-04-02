@@ -15,7 +15,7 @@ configurable int dbPort = 3306;
 table<PetRecord> key(owner, id) petRecords = table [];
 // final mysql:Client|sql:Error dbClient;
 final jdbc:Client|error dbClient;
-boolean useDB = false;
+boolean useDB = true;
 
 function init() returns error? {
 
