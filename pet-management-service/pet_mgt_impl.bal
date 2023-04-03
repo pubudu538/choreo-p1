@@ -24,8 +24,8 @@ function init() returns error? {
         properties: {
             autoReconnect: true,
             maxReconnects: 10,
-            connectTimeout: "5000",
-            socketTimeout: "5000"
+            validationQuery: "SELECT 1",
+            testOnBorrow: true
         }
     };
 
@@ -43,6 +43,7 @@ function init() returns error? {
     if useDB {
         log:printInfo("DB configurations are given. Hence storing the data in DB");
     }
+
 }
 
 function getConnection() returns jdbc:Client|error {
