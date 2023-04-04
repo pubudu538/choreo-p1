@@ -27,7 +27,7 @@ function init() returns error? {
     sql:ConnectionPool connPool = {
         maxOpenConnections: 20,
         minIdleConnections: 20,
-        maxConnectionLifeTime: 0
+        maxConnectionLifeTime: 60
     };
 
     // jdbc:Options options = {
