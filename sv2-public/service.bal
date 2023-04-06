@@ -50,6 +50,7 @@ service / on new http:Listener(9090) {
 
         Pet[] pets = check petClient->/pets;
         io:println("GET request:" + pets.toJsonString());
+        io:println("GET request:" + pets.toJsonString());
 
         return pets;
     }
