@@ -38,8 +38,8 @@ type PetRecord record {|
 table<PetRecord> key(owner, id) petRecords = table [];
 
 # A service representing a network-accessible API
-# bound to port `9091`.
-service / on new http:Listener(9091) {
+# bound to port `9090`.
+service / on new http:Listener(9090) {
 
     # Get all pets
     # + return - List of pets or error
