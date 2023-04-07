@@ -25,7 +25,7 @@ function init() returns error? {
     sql:ConnectionPool connPool = {
         maxOpenConnections: 20,
         minIdleConnections: 20,
-        maxConnectionLifeTime: 600
+        maxConnectionLifeTime: 300
     };
 
     mysql:Options mysqlOptions = {
