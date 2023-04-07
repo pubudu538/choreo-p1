@@ -48,9 +48,7 @@ type Notifications record {|
 |};
 
 type Settings record {|
-    record {
-        *Notifications;
-    } notifications;
+    Notifications notifications;
 |};
 
 type SettingsRecord record {|

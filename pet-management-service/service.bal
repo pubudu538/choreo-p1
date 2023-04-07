@@ -1,7 +1,6 @@
 import ballerina/http;
 import ballerina/jwt;
 import ballerina/mime;
-import ballerina/io;
 
 # A service representing a network-accessible API
 # bound to port `9090`.
@@ -168,7 +167,7 @@ service / on new http:Listener(9090) {
         return settings;
     }
 
-    resource function put settings(http:Headers headers, @http:Payload Settings settings) returns http:Ok|http:BadRequest|error {
+    resource function put settings(http:Headers headers, @http:Payload Settings settings) returns http:Ok|error {
 
         string|error owner = getOwner(headers);
         if owner is error {
@@ -181,9 +180,6 @@ service / on new http:Listener(9090) {
         if result is error {
             return result;
         }
-
-        io:println(settings);
-
         return http:OK;
     }
 

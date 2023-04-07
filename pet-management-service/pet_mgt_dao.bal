@@ -233,9 +233,7 @@ function dbGetOwnerSettings(string owner) returns Settings|()|error {
     } else if result is sql:Error {
         return handleError(result);
     } else {
-        Settings settings = {
-            notifications: result
-        };
+        Settings settings = {notifications: result};
         return settings;
     }
 
