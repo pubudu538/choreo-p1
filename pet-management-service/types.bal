@@ -41,3 +41,19 @@ type PetVaccinationRecord record {|
     string nextVaccinationDate?;
     boolean enableAlerts?;
 |};
+
+type Notifications record {|
+    boolean enabled;
+    string emailAddress?;
+|};
+
+type Settings record {|
+    record {
+        *Notifications;
+    } notifications;
+|};
+
+type SettingsRecord record {|
+    readonly string owner;
+    *Settings;
+|};

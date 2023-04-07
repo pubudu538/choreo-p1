@@ -217,6 +217,52 @@ function dbGetThumbnailById(string petId) returns Thumbnail|string|error {
     }
 }
 
+function dbGetOwnerSettings(string owner) returns Settings|()|error {
+
+    jdbc:Client|error dbClient = getConnection();
+    if dbClient is error {
+        return handleError(dbClient);
+    }
+
+    sql:ParameterizedQuery query = `SELECT notifications_enabled as enabled, notifications_emailAddress 
+        as emailAddress FROM Settings WHERE owner = ${owner}`;
+    Notifications|sql:Error result = dbClient->queryRow(query);
+
+    if result is sql:NoRowsError {
+        return ();
+    } else if result is sql:Error {
+        return handleError(result);
+    } else {
+        Settings settings = {
+            notifications: result
+        };
+        return settings;
+    }
+
+}
+
+function dbUpdateSettingsByOwner(SettingsRecord settingsRecord) returns string|error {
+
+    jdbc:Client|error dbClient = getConnection();
+    if dbClient is error {
+        return handleError(dbClient);
+    }
+
+    do {
+        sql:ParameterizedQuery query = `INSERT INTO Settings (owner, notifications_enabled, notifications_emailAddress)
+            VALUES (${settingsRecord.owner}, ${settingsRecord.notifications.enabled}, ${settingsRecord.notifications.emailAddress}) 
+            ON DUPLICATE KEY UPDATE notifications_enabled = ${settingsRecord.notifications.enabled}
+            ,notifications_emailAddress = ${settingsRecord.notifications.emailAddress};`;
+
+        _ = check dbClient->execute(query);
+
+        return "Settings updated successfully";
+    }
+    on fail error e {
+        return handleError(e);
+    }
+}
+
 function handleError(error err) returns error {
     log:printError("Error while processing the request", err);
     return error("Error while processing the request");

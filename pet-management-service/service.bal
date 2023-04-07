@@ -1,6 +1,7 @@
 import ballerina/http;
 import ballerina/jwt;
 import ballerina/mime;
+import ballerina/io;
 
 # A service representing a network-accessible API
 # bound to port `9090`.
@@ -147,6 +148,45 @@ service / on new http:Listener(9090) {
         return response;
     }
 
+    resource function get settings(http:Headers headers) returns Settings|error {
+
+        [string, string]|error ownerInfo = getOwnerWithEmail(headers);
+        if ownerInfo is error {
+            return ownerInfo;
+        }
+
+        string owner;
+        string email;
+        [owner, email] = ownerInfo;
+
+        Settings|error settings = getSettings(owner, email);
+
+        if settings is error {
+            return settings;
+        }
+
+        return settings;
+    }
+
+    resource function put settings(http:Headers headers, @http:Payload Settings settings) returns http:Ok|http:BadRequest|error {
+
+        string|error owner = getOwner(headers);
+        if owner is error {
+            return owner;
+        }
+
+        SettingsRecord settingsRecord = {owner: owner, ...settings};
+        string|error result = updateSettings(settingsRecord);
+
+        if result is error {
+            return result;
+        }
+
+        io:println(settings);
+
+        return http:OK;
+    }
+
 }
 
 function getOwner(http:Headers headers) returns string|error {
@@ -157,14 +197,31 @@ function getOwner(http:Headers headers) returns string|error {
     }
 
     [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(jwtHeader);
-    string? subClaim = payload.sub;
+    return getOwnerFromPayload(payload);
+}
 
+function getOwnerWithEmail(http:Headers headers) returns [string, string]|error {
+
+    var jwtHeader = headers.getHeader("x-jwt-assertion");
+    if jwtHeader is http:HeaderNotFoundError {
+        return jwtHeader;
+    }
+
+    [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(jwtHeader);
+    string owner = getOwnerFromPayload(payload);
+    string emailAddress = payload["email"].toString();
+
+    return [owner, emailAddress];
+}
+
+function getOwnerFromPayload(jwt:Payload payload) returns string {
+
+    string? subClaim = payload.sub;
     if subClaim is () {
         subClaim = "Test_Key_User";
     }
-    string owner = <string>subClaim;
 
-    return owner;
+    return <string>subClaim;
 }
 
 function handleContent(mime:Entity bodyPart) returns Thumbnail|error? {

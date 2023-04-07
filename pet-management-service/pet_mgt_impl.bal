@@ -4,7 +4,6 @@ import ballerina/uuid;
 import ballerina/sql;
 import ballerina/log;
 import ballerinax/mysql;
-import ballerina/io;
 
 configurable string dbHost = "localhost";
 configurable string dbUsername = "admin";
@@ -13,9 +12,8 @@ configurable string dbDatabase = "PET_DB";
 configurable int dbPort = 3306;
 
 table<PetRecord> key(owner, id) petRecords = table [];
-// final jdbc:Client|error dbClient;
+table<SettingsRecord> key(owner) settingsRecords = table [];
 final mysql:Client|error dbClient;
-
 boolean useDB = false;
 
 function init() returns error? {
@@ -27,24 +25,12 @@ function init() returns error? {
     sql:ConnectionPool connPool = {
         maxOpenConnections: 20,
         minIdleConnections: 20,
-        maxConnectionLifeTime: 60
+        maxConnectionLifeTime: 600
     };
-
-    // jdbc:Options options = {
-    //     properties: {
-    //         autoReconnect: true,
-    //         maxReconnects: 10,
-    //         validationQuery: "SELECT 1",
-    //         testOnBorrow: true
-    //     }
-    // };
 
     mysql:Options mysqlOptions = {
         connectTimeout: 10
     };
-
-    // dbClient = new ("jdbc:mysql://" + dbHost + ":" + dbPort.toString() + "/" + dbDatabase, dbUsername, dbPassword, options = options,
-    // connectionPool = connPool);
 
     dbClient = new (dbHost, dbUsername, dbPassword, dbDatabase, dbPort, options = mysqlOptions, connectionPool = connPool);
 
@@ -64,7 +50,6 @@ function init() returns error? {
 }
 
 function getConnection() returns jdbc:Client|error {
-    io:println("DB client new connection - ", dbClient);
     return dbClient;
 }
 
@@ -216,6 +201,54 @@ function getThumbnailByPetId(string owner, string petId) returns Thumbnail|()|st
     }
 }
 
+function updateSettings(SettingsRecord settingsRecord) returns string|error {
+
+    if (useDB) {
+        string|error updatedResult = dbUpdateSettingsByOwner(settingsRecord);
+        if updatedResult is error {
+            return updatedResult;
+        }
+
+    } else {
+        settingsRecords.put(settingsRecord);
+    }
+
+    return "Settings updated successfully";
+}
+
+function getSettings(string owner, string email) returns Settings|error {
+
+    if (useDB) {
+
+        Settings|()|error settings = dbGetOwnerSettings(owner);
+
+        if settings is error {
+            return settings;
+        } else if settings is () {
+            Settings newSettings = getDefaultSettings(email);
+            SettingsRecord settingsRecord = {owner: owner, ...newSettings};
+            string|error updatedResult = dbUpdateSettingsByOwner(settingsRecord);
+            if updatedResult is error {
+                return updatedResult;
+            }
+            return newSettings;
+        } else {
+            return settings;
+        }
+
+    } else {
+        SettingsRecord? settingsRecord = settingsRecords[owner];
+
+        if settingsRecord is () {
+            Settings settings = getDefaultSettings(email);
+            settingsRecords.put({owner: owner, ...settings});
+            return settings;
+        }
+        return {notifications: settingsRecord.notifications};
+    }
+
+}
+
 function getPetDetails(PetRecord petRecord) returns Pet {
 
     Pet pet = {
@@ -228,4 +261,15 @@ function getPetDetails(PetRecord petRecord) returns Pet {
     };
 
     return pet;
+}
+
+function getDefaultSettings(string email) returns Settings {
+
+    boolean enabled = false;
+    if email != "" {
+        enabled = true;
+    }
+
+    Settings settings = {notifications: {enabled: enabled, emailAddress: email}};
+    return settings;
 }
