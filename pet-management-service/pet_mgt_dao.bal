@@ -299,15 +299,11 @@ function dbGetPetIdsForEnabledAlerts(string date) returns string[]|error {
      WHERE v.enableAlerts = true AND v.nextVaccinationDate = ${date}`;
     stream<record {}, sql:Error?> resultStream = dbClient->query(query);
 
-    sql:Error? unionResult = from record {} entry in resultStream
+    check from record {} entry in resultStream
         do {
             petIds.push(entry["id"].toString());
         };
     check resultStream.close();
-
-    if unionResult is sql:Error {
-        return handleError(unionResult);
-    }
 
     return petIds;
 }
