@@ -85,9 +85,14 @@ function getPetByIdAndOwner(string owner, string petId) returns Pet|()|error {
 
 function getPetById(string petId) returns Pet|() {
 
-    // string owner = "";
     if (useDB) {
-        // return dbGetPetByOwnerAndPetId(owner, petId);
+        Pet|()|error petResult = dbGetPetByPetId(petId);
+
+        if petResult is Pet {
+            return petResult;
+        } else {
+            return ();
+        }
     } else {
         string owner = from var petRecord in petRecords
             where petRecord.id == petId
@@ -100,8 +105,6 @@ function getPetById(string petId) returns Pet|() {
 
         return getPetDetails(petRecord);
     }
-
-    return ();
 }
 
 function updatePetById(string owner, string petId, PetItem updatedPetItem) returns Pet|()|error {
@@ -294,7 +297,6 @@ function getSettingsByOwner(string owner) returns Settings|() {
 
 }
 
-// get alerts for nextday
 function getAvailableAlerts(string nextDay) returns PetAlert[] {
 
     PetAlert[] petAlerts = [];
@@ -302,35 +304,27 @@ function getAvailableAlerts(string nextDay) returns PetAlert[] {
 
     foreach var petId in petIds {
         Pet|() pet = getPetById(petId);
-        if pet is () {
-            //return error("Pet not found");
-        } else {
 
+        if pet != () {
             Settings|() settings = getSettingsByOwner(pet.owner);
-            if settings is () {
-                //return error("Settings not found");
-            } else {
-                if settings.notifications.enabled && settings.notifications.emailAddress != "" {
-                    string email = <string>settings.notifications.emailAddress;
 
-                    Vaccination[] selectedVaccinations = [];
-                    Vaccination[] vaccinations = <Vaccination[]>pet.vaccinations;
+            if settings != () && settings.notifications.enabled && settings.notifications.emailAddress != "" {
 
-                    foreach var vac in vaccinations {
-                        if vac.nextVaccinationDate == nextDay {
-                            selectedVaccinations.push(vac);
-                        }
+                string email = <string>settings.notifications.emailAddress;
+                Vaccination[] selectedVaccinations = [];
+                Vaccination[] vaccinations = <Vaccination[]>pet.vaccinations;
+
+                foreach var vac in vaccinations {
+                    if vac.nextVaccinationDate == nextDay && vac.enableAlerts == true {
+                        selectedVaccinations.push(vac);
                     }
-
-                    pet.vaccinations = selectedVaccinations;
-                    PetAlert petAlert = {...pet, emailAddress: email};
-                    petAlerts.push(petAlert);
                 }
 
+                pet.vaccinations = selectedVaccinations;
+                PetAlert petAlert = {...pet, emailAddress: email};
+                petAlerts.push(petAlert);
             }
-
         }
-
     }
 
     return petAlerts;
@@ -340,6 +334,13 @@ function getPetIdsForEnabledAlerts(string nextDay) returns string[] {
 
     string[] petIds = [];
     if (useDB) {
+        string[]|error dbGetPetIdsForEnabledAlertsResult = dbGetPetIdsForEnabledAlerts(nextDay);
+
+        if dbGetPetIdsForEnabledAlertsResult is error {
+            return petIds;
+        } else {
+            return <string[]>dbGetPetIdsForEnabledAlertsResult;
+        }
 
     } else {
         petRecords.forEach(function(PetRecord petRecord) {

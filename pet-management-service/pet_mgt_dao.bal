@@ -50,6 +50,32 @@ function dbGetPetByOwnerAndPetId(string owner, string petId) returns Pet|()|erro
     }
 }
 
+function dbGetPetByPetId(string petId) returns Pet|()|error {
+
+    jdbc:Client|error dbClient = getConnection();
+    if dbClient is error {
+        return handleError(dbClient);
+    }
+
+    do {
+        sql:ParameterizedQuery query = `SELECT p.id, p.name, p.breed, p.dateOfBirth, p.owner, v.name as vaccinationName,
+        v.lastVaccinationDate, v.nextVaccinationDate, v.enableAlerts FROM Pet p LEFT JOIN Vaccination v 
+        ON p.id = v.petId WHERE p.id = ${petId}`;
+        stream<PetVaccinationRecord, sql:Error?> petsStream = dbClient->query(query);
+
+        map<Pet> pets = check getPetsForPetsStream(petsStream);
+        check petsStream.close();
+
+        if pets.length() == 0 {
+            return ();
+        }
+        return pets.get(petId);
+    }
+    on fail error e {
+        return handleError(e);
+    }
+}
+
 function dbDeletePetById(string owner, string petId) returns string|()|error {
 
     jdbc:Client|error dbClient = getConnection();
@@ -259,6 +285,31 @@ function dbUpdateSettingsByOwner(SettingsRecord settingsRecord) returns string|e
     on fail error e {
         return handleError(e);
     }
+}
+
+function dbGetPetIdsForEnabledAlerts(string date) returns string[]|error {
+
+    jdbc:Client|error dbClient = getConnection();
+    if dbClient is error {
+        return handleError(dbClient);
+    }
+
+    string[] petIds = [];
+    sql:ParameterizedQuery query = `SELECT Pet.id FROM Pet LEFT JOIN Vaccination v ON Pet.id = v.petId 
+     WHERE v.enableAlerts = true AND v.nextVaccinationDate = ${date}`;
+    stream<record {}, sql:Error?> resultStream = dbClient->query(query);
+
+    sql:Error? unionResult = from record {} entry in resultStream
+        do {
+            petIds.push(entry["id"].toString());
+        };
+    check resultStream.close();
+
+    if unionResult is sql:Error {
+        return handleError(unionResult);
+    }
+
+    return petIds;
 }
 
 function handleError(error err) returns error {
