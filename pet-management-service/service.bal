@@ -42,7 +42,7 @@ service / on new http:Listener(9090) {
             return owner;
         }
 
-        Pet|()|error result = getPetById(owner, petId);
+        Pet|()|error result = getPetByIdAndOwner(owner, petId);
         if result is () {
             return http:NOT_FOUND;
         }
@@ -246,4 +246,3 @@ function handleContent(mime:Entity bodyPart) returns Thumbnail|error? {
 
     return error("Unsupported media type found");
 }
-

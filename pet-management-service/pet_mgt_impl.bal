@@ -70,7 +70,7 @@ function getPets(string owner) returns Pet[]|error {
     return pets;
 }
 
-function getPetById(string owner, string petId) returns Pet|()|error {
+function getPetByIdAndOwner(string owner, string petId) returns Pet|()|error {
 
     if (useDB) {
         return dbGetPetByOwnerAndPetId(owner, petId);
@@ -81,6 +81,27 @@ function getPetById(string owner, string petId) returns Pet|()|error {
         }
         return getPetDetails(petRecord);
     }
+}
+
+function getPetById(string petId) returns Pet|() {
+
+    // string owner = "";
+    if (useDB) {
+        // return dbGetPetByOwnerAndPetId(owner, petId);
+    } else {
+        string owner = from var petRecord in petRecords
+            where petRecord.id == petId
+            select petRecord.owner;
+
+        PetRecord? petRecord = petRecords[owner, petId];
+        if petRecord is () {
+            return ();
+        }
+
+        return getPetDetails(petRecord);
+    }
+
+    return ();
 }
 
 function updatePetById(string owner, string petId, PetItem updatedPetItem) returns Pet|()|error {
@@ -247,6 +268,97 @@ function getSettings(string owner, string email) returns Settings|error {
         return {notifications: settingsRecord.notifications};
     }
 
+}
+
+function getSettingsByOwner(string owner) returns Settings|() {
+
+    if (useDB) {
+
+        Settings|()|error settings = dbGetOwnerSettings(owner);
+
+        if settings is Settings {
+            return settings;
+        } else {
+            return ();
+        }
+
+    } else {
+        SettingsRecord? settingsRecord = settingsRecords[owner];
+
+        if settingsRecord is () {
+            return ();
+        }
+
+        return {notifications: settingsRecord.notifications};
+    }
+
+}
+
+// get alerts for nextday
+function getAvailableAlerts(string nextDay) returns PetAlert[] {
+
+    PetAlert[] petAlerts = [];
+    string[] petIds = getPetIdsForEnabledAlerts(nextDay);
+
+    foreach var petId in petIds {
+        Pet|() pet = getPetById(petId);
+        if pet is () {
+            //return error("Pet not found");
+        } else {
+
+            Settings|() settings = getSettingsByOwner(pet.owner);
+            if settings is () {
+                //return error("Settings not found");
+            } else {
+                if settings.notifications.enabled && settings.notifications.emailAddress != "" {
+                    string email = <string>settings.notifications.emailAddress;
+
+                    Vaccination[] selectedVaccinations = [];
+                    Vaccination[] vaccinations = <Vaccination[]>pet.vaccinations;
+
+                    foreach var vac in vaccinations {
+                        if vac.nextVaccinationDate == nextDay {
+                            selectedVaccinations.push(vac);
+                        }
+                    }
+
+                    pet.vaccinations = selectedVaccinations;
+                    PetAlert petAlert = {...pet, emailAddress: email};
+                    petAlerts.push(petAlert);
+                }
+
+            }
+
+        }
+
+    }
+
+    return petAlerts;
+}
+
+function getPetIdsForEnabledAlerts(string nextDay) returns string[] {
+
+    string[] petIds = [];
+    if (useDB) {
+
+    } else {
+        petRecords.forEach(function(PetRecord petRecord) {
+
+            if petRecord.vaccinations is () {
+                return;
+            }
+
+            Vaccination[] vaccinations = <Vaccination[]>petRecord.vaccinations;
+            vaccinations.forEach(function(Vaccination vaccination) {
+
+                if vaccination.nextVaccinationDate == nextDay && <boolean>vaccination.enableAlerts {
+                    petIds.push(petRecord.id);
+                }
+            });
+        });
+    }
+
+    return petIds;
 }
 
 function getPetDetails(PetRecord petRecord) returns Pet {

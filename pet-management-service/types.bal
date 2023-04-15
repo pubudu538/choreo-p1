@@ -55,3 +55,8 @@ type SettingsRecord record {|
     readonly string owner;
     *Settings;
 |};
+
+type PetAlert record {|
+    *Pet;
+    string emailAddress;
+|};
