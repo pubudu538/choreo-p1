@@ -3,8 +3,9 @@ org = "PubuduGunatilaka"
 name = "pet_management_service"
 version = "1.0.0"
 export = ["pet_management_service"]
-include = ["resources"]
+include = ["resources", "email_template.html"]
 distribution = "2201.3.1"
 
 [build-options]
 observabilityIncluded = true
+# cloud = "k8s"

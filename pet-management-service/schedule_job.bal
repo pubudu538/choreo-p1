@@ -71,7 +71,7 @@ class Job {
 public function main() returns error? {
 
     decimal jobIntervalInSeconds = 10;
-    string filePath = "./resources/email_template.html";
+    string filePath = "/home/ballerina/resources/email_template.html";
 
     string emailTemplate = check io:fileReadString(filePath);
     task:JobId|task:Error scheduledJob = task:scheduleJobRecurByFrequency(new Job(emailTemplate), jobIntervalInSeconds);
