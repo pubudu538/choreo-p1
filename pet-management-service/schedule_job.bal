@@ -2,8 +2,8 @@ import ballerina/task;
 import ballerina/time;
 import ballerina/log;
 import ballerina/email;
-import ballerina/io;
 import ballerina/regex;
+import ballerina/io;
 
 configurable string emailHost = "smtp.email.com";
 configurable string emailUsername = "admin";
@@ -73,8 +73,17 @@ public function main() returns error? {
     decimal jobIntervalInSeconds = 10;
     string filePath = "/home/ballerina/resources/email_template.html";
 
-    string emailTemplate = check io:fileReadString(filePath);
-    task:JobId|task:Error scheduledJob = task:scheduleJobRecurByFrequency(new Job(emailTemplate), jobIntervalInSeconds);
+    string|io:Error emailTemplate = io:fileReadString(filePath);
+
+    if (emailTemplate is io:Error) {
+        log:printError("Error while loading the email template: " + emailTemplate.toString());
+        log:printError("Please mount the file to the container. Mount location: /home/ballerina/resources/email_template.html");
+        emailTemplate = "";
+    } else {
+        log:printInfo("Email template loaded successfully.");
+    }
+
+    task:JobId|task:Error scheduledJob = task:scheduleJobRecurByFrequency(new Job(check emailTemplate), jobIntervalInSeconds);
 
     if (scheduledJob is task:JobId) {
         log:printInfo("Job scheduled to run every " + jobIntervalInSeconds.toString() + " seconds.");
@@ -83,7 +92,6 @@ public function main() returns error? {
     }
 
 }
-
 
 function sendEmail(PetAlert petAlert, string currentDate, string vacDate, string emailTemplate) {
 
