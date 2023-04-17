@@ -3,6 +3,7 @@ import ballerina/time;
 import ballerina/log;
 import ballerina/email;
 import ballerina/regex;
+
 import ballerina/io;
 
 configurable string emailHost = "smtp.email.com";
@@ -74,6 +75,8 @@ public function main() returns error? {
     string filePath = "/home/ballerina/resources/email_template.html";
 
     string|io:Error emailTemplate = io:fileReadString(filePath);
+
+    // string emailTemplate = getEmailTemplate();
 
     if (emailTemplate is io:Error) {
         log:printError("Error while loading the email template: " + emailTemplate.toString());
