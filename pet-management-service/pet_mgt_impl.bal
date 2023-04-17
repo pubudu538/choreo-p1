@@ -4,6 +4,7 @@ import ballerina/uuid;
 import ballerina/sql;
 import ballerina/log;
 import ballerinax/mysql;
+import ballerina/io;
 
 configurable string dbHost = "localhost";
 configurable string dbUsername = "admin";
@@ -178,20 +179,30 @@ function updateThumbnailByPetId(string owner, string petId, Thumbnail thumbnail)
         return "Thumbnail updated successfully";
     } else {
 
+        io:println("Updating thumbnail for pet id: " + petId);
+
         PetRecord? petRecord = petRecords[owner, petId];
         if petRecord is () {
+            io:println("#### Pet Not found" + petId);
             return ();
         }
+
+        io:println("#### found - ", petRecord);
+        io:println("#### found - ", thumbnail);
+        io:println("#### found - ", thumbnail.fileName);
 
         if thumbnail.fileName == "" {
             petRecord.thumbnail = ();
             petRecords.put(petRecord);
-
+            io:println("#### found - Empty updated");
         } else {
             petRecord.thumbnail = thumbnail;
             petRecords.put(petRecord);
-
+            io:println("#### found - Updated correctly");
         }
+
+        io:println("#### Pet Records - ", petRecords);
+        io:println("#### Put done ####");
         return "Thumbnail updated successfully";
     }
 }
@@ -212,15 +223,21 @@ function getThumbnailByPetId(string owner, string petId) returns Thumbnail|()|st
 
     } else {
 
+        io:println("##### Getting thumbnail for pet id: " + petId);
+        io:println("#### found - ", petRecords);
         PetRecord? petRecord = petRecords[owner, petId];
         if petRecord is () {
+            io:println("#### Pet Not found" + petId);
             return ();
         }
 
+        io:println("#### found - ", petRecord);
         Thumbnail? thumbnail = <Thumbnail?>petRecord.thumbnail;
+        io:println("#### found - thum  ", thumbnail);
         if thumbnail is () {
             return "No thumbnail found";
         }
+         io:println("#### Get done ####");
         return <Thumbnail>thumbnail;
     }
 }
