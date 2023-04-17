@@ -1,7 +1,6 @@
 import ballerina/http;
 import ballerina/jwt;
 import ballerina/mime;
-import ballerina/io;
 
 # A service representing a network-accessible API
 # bound to port `9090`.
@@ -128,7 +127,6 @@ service / on new http:Listener(9090) {
         Thumbnail|()|string|error thumbnail = getThumbnailByPetId(owner, petId);
         http:Response response = new;
 
-        io:println("#### Service get done #### ");
         if thumbnail is () {
             return http:NOT_FOUND;
         } else if thumbnail is error {

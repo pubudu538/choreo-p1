@@ -4,7 +4,6 @@ import ballerina/uuid;
 import ballerina/sql;
 import ballerina/log;
 import ballerinax/mysql;
-import ballerina/io;
 
 configurable string dbHost = "localhost";
 configurable string dbUsername = "admin";
@@ -180,35 +179,15 @@ function updateThumbnailByPetId(string owner, string petId, Thumbnail thumbnail)
         return "Thumbnail updated successfully";
     } else {
 
-        io:println("Put start: " + petId);
-
-        PetRecord? petRecord = petRecords[owner, petId];
-        if petRecord is () {
-            io:println("#### Pet Not found" + petId);
-            return ();
-        }
-
-        io:println("#### found - ", petRecord.name);
-        io:println("#### found - ", thumbnail.fileName);
-
         if thumbnail.fileName == "" {
-            // petRecord.thumbnail = ();
-            // petRecords.put(petRecord);
-
             if thumbnailMap.hasKey(owner + "-" + petId) {
                 _ = thumbnailMap.remove(owner + "-" + petId);
             }
 
-            io:println("#### found - Empty updated");
         } else {
-            // petRecord.thumbnail = thumbnail;
-            // petRecords.put(petRecord);
-
             thumbnailMap[owner + "-" + petId] = thumbnail;
-            io:println("#### found - Updated correctly");
         }
 
-        io:println("#### Put done ####");
         return "Thumbnail updated successfully";
     }
 }
@@ -229,19 +208,10 @@ function getThumbnailByPetId(string owner, string petId) returns Thumbnail|()|st
 
     } else {
 
-        io:println("##### Get start: " + petId);
-
-        PetRecord? petRecord = petRecords[owner, petId];
-        if petRecord is () {
-            io:println("#### Pet Not found" + petId);
-            return ();
-        }
-
         if thumbnailMap.hasKey(owner + "-" + petId) {
             Thumbnail thumbnail = <Thumbnail>thumbnailMap[owner + "-" + petId];
             return thumbnail;
         } else {
-            io:println("#### found - Empty");
             return ();
         }
 
