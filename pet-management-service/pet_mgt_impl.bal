@@ -18,8 +18,6 @@ boolean useDB = false;
 
 function init() returns error? {
 
-    log:printInfo("DB configurations are given **** " + dbHost);
-
     if dbHost != "localhost" && dbHost != "" {
         useDB = true;
     }
