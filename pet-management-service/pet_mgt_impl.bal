@@ -16,6 +16,7 @@ table<PetRecord> key(owner, id) petRecords = table [];
 table<SettingsRecord> key(owner) settingsRecords = table [];
 final mysql:Client|error dbClient;
 boolean useDB = false;
+map<Thumbnail> thumbnailMap = {};
 
 function init() returns error? {
 
@@ -191,26 +192,20 @@ function updateThumbnailByPetId(string owner, string petId, Thumbnail thumbnail)
         io:println("#### found - ", thumbnail.fileName);
 
         if thumbnail.fileName == "" {
-            petRecord.thumbnail = ();
-            petRecords.put(petRecord);
+            // petRecord.thumbnail = ();
+            // petRecords.put(petRecord);
+
+            if thumbnailMap.hasKey(owner + "-" + petId) {
+                _ = thumbnailMap.remove(owner + "-" + petId);
+            }
+
             io:println("#### found - Empty updated");
         } else {
-            petRecord.thumbnail = thumbnail;
-            petRecords.put(petRecord);
+            // petRecord.thumbnail = thumbnail;
+            // petRecords.put(petRecord);
+
+            thumbnailMap[owner + "-" + petId] = thumbnail;
             io:println("#### found - Updated correctly");
-        }
-
-        io:println("#### Pet Records - iterating");
-        foreach var item in petRecords {
-            io:println("pet record - ", item.name);
-
-            Thumbnail? thumbnail1 = <Thumbnail?>item.thumbnail;
-
-            if thumbnail1 is () {
-                io:println("pet record - thum Empty");
-            } else {
-                io:println("pet record -thum ", thumbnail1.fileName);
-            }
         }
 
         io:println("#### Put done ####");
@@ -235,18 +230,6 @@ function getThumbnailByPetId(string owner, string petId) returns Thumbnail|()|st
     } else {
 
         io:println("##### Get start: " + petId);
-        io:println("#### Pet Records - iterating");
-        foreach var item in petRecords {
-            io:println("pet record - ", item.name);
-
-            Thumbnail? thumbnail1 = <Thumbnail?>item.thumbnail;
-
-            if thumbnail1 is () {
-                io:println("pet record - thum Empty");
-            } else {
-                io:println("pet record -thum ", thumbnail1.fileName);
-            }
-        }
 
         PetRecord? petRecord = petRecords[owner, petId];
         if petRecord is () {
@@ -254,20 +237,14 @@ function getThumbnailByPetId(string owner, string petId) returns Thumbnail|()|st
             return ();
         }
 
-        io:println("#### found - ", petRecord.name);
-        Thumbnail? thumbnail = <Thumbnail?>petRecord.thumbnail;
-
-        if thumbnail is () {
-            io:println("pet record - thum Empty");
+        if thumbnailMap.hasKey(owner + "-" + petId) {
+            Thumbnail thumbnail = <Thumbnail>thumbnailMap[owner + "-" + petId];
+            return thumbnail;
         } else {
-            io:println("pet record -thum ", thumbnail.fileName);
+            io:println("#### found - Empty");
+            return ();
         }
 
-        if thumbnail is () {
-            return "No thumbnail found";
-        }
-        io:println("#### Get done ####");
-        return <Thumbnail>thumbnail;
     }
 }
 
