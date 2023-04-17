@@ -76,8 +76,6 @@ public function main() returns error? {
 
     string|io:Error emailTemplate = io:fileReadString(filePath);
 
-    // string emailTemplate = getEmailTemplate();
-
     if (emailTemplate is io:Error) {
         log:printError("Error while loading the email template: " + emailTemplate.toString());
         log:printError("Please mount the file to the container. Mount location: /home/ballerina/resources/email_template.html");
