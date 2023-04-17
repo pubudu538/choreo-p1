@@ -179,7 +179,7 @@ function updateThumbnailByPetId(string owner, string petId, Thumbnail thumbnail)
         return "Thumbnail updated successfully";
     } else {
 
-        io:println("Updating thumbnail for pet id: " + petId);
+        io:println("Put start: " + petId);
 
         PetRecord? petRecord = petRecords[owner, petId];
         if petRecord is () {
@@ -187,8 +187,7 @@ function updateThumbnailByPetId(string owner, string petId, Thumbnail thumbnail)
             return ();
         }
 
-        io:println("#### found - ", petRecord);
-        io:println("#### found - ", thumbnail);
+        io:println("#### found - ", petRecord.name);
         io:println("#### found - ", thumbnail.fileName);
 
         if thumbnail.fileName == "" {
@@ -201,7 +200,19 @@ function updateThumbnailByPetId(string owner, string petId, Thumbnail thumbnail)
             io:println("#### found - Updated correctly");
         }
 
-        io:println("#### Pet Records - ", petRecords);
+        io:println("#### Pet Records - iterating");
+        foreach var item in petRecords {
+            io:println("pet record - ", item.name);
+
+            Thumbnail? thumbnail1 = <Thumbnail?>item.thumbnail;
+
+            if thumbnail1 is () {
+                io:println("pet record - thum Empty");
+            } else {
+                io:println("pet record -thum ", thumbnail1.fileName);
+            }
+        }
+
         io:println("#### Put done ####");
         return "Thumbnail updated successfully";
     }
@@ -223,21 +234,39 @@ function getThumbnailByPetId(string owner, string petId) returns Thumbnail|()|st
 
     } else {
 
-        io:println("##### Getting thumbnail for pet id: " + petId);
-        io:println("#### found - ", petRecords);
+        io:println("##### Get start: " + petId);
+        io:println("#### Pet Records - iterating");
+        foreach var item in petRecords {
+            io:println("pet record - ", item.name);
+
+            Thumbnail? thumbnail1 = <Thumbnail?>item.thumbnail;
+
+            if thumbnail1 is () {
+                io:println("pet record - thum Empty");
+            } else {
+                io:println("pet record -thum ", thumbnail1.fileName);
+            }
+        }
+
         PetRecord? petRecord = petRecords[owner, petId];
         if petRecord is () {
             io:println("#### Pet Not found" + petId);
             return ();
         }
 
-        io:println("#### found - ", petRecord);
+        io:println("#### found - ", petRecord.name);
         Thumbnail? thumbnail = <Thumbnail?>petRecord.thumbnail;
-        io:println("#### found - thum  ", thumbnail);
+
+        if thumbnail is () {
+            io:println("pet record - thum Empty");
+        } else {
+            io:println("pet record -thum ", thumbnail.fileName);
+        }
+
         if thumbnail is () {
             return "No thumbnail found";
         }
-         io:println("#### Get done ####");
+        io:println("#### Get done ####");
         return <Thumbnail>thumbnail;
     }
 }
