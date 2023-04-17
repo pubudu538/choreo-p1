@@ -85,7 +85,6 @@ public function main() returns error? {
     }
 
     task:JobId|task:Error scheduledJob = task:scheduleJobRecurByFrequency(new Job(check emailTemplate), jobIntervalInSeconds);
-
     if (scheduledJob is task:JobId) {
         log:printInfo("Job scheduled to run every " + jobIntervalInSeconds.toString() + " seconds.");
     } else {
