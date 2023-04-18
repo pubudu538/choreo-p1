@@ -23,12 +23,16 @@ service / on new http:Listener(9090) {
     # + return - created pet record or error
     resource function post pets(http:Headers headers, @http:Payload PetItem newPet) returns Pet|http:Created|error? {
 
-        string|error owner = getOwner(headers);
-        if owner is error {
-            return owner;
+        [string, string]|error ownerInfo = getOwnerWithEmail(headers);
+        if ownerInfo is error {
+            return ownerInfo;
         }
 
-        Pet|error pet = addPet(newPet, owner);
+        string owner;
+        string email;
+        [owner, email] = ownerInfo;
+
+        Pet|error pet = addPet(newPet, owner, email);
         return pet;
     }
 
@@ -55,12 +59,16 @@ service / on new http:Listener(9090) {
     # + return - Pet details or not found 
     resource function put pets/[string petId](http:Headers headers, @http:Payload PetItem updatedPetItem) returns Pet|http:NotFound|error? {
 
-        string|error owner = getOwner(headers);
-        if owner is error {
-            return owner;
+        [string, string]|error ownerInfo = getOwnerWithEmail(headers);
+        if ownerInfo is error {
+            return ownerInfo;
         }
 
-        Pet|()|error result = updatePetById(owner, petId, updatedPetItem);
+        string owner;
+        string email;
+        [owner, email] = ownerInfo;
+
+        Pet|()|error result = updatePetById(owner, email, petId, updatedPetItem);
         if result is () {
             return http:NOT_FOUND;
         }

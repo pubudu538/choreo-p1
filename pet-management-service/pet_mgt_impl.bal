@@ -108,7 +108,7 @@ function getPetById(string petId) returns Pet|() {
     }
 }
 
-function updatePetById(string owner, string petId, PetItem updatedPetItem) returns Pet|()|error {
+function updatePetById(string owner, string email, string petId, PetItem updatedPetItem) returns Pet|()|error {
 
     if (useDB) {
         Pet|() oldPet = check dbGetPetByOwnerAndPetId(owner, petId);
@@ -117,7 +117,14 @@ function updatePetById(string owner, string petId, PetItem updatedPetItem) retur
         }
 
         Pet pet = {id: petId, owner: owner, ...updatedPetItem};
-        return dbUpdatePet(pet);
+        Pet|error updatedPet = dbUpdatePet(pet);
+
+        if updatedPet is error {
+            return updatedPet;
+        }
+        enableAlerts(email, owner, updatedPet);
+        return updatedPet;
+
     } else {
         PetRecord? oldePetRecord = petRecords[owner, petId];
         if oldePetRecord is () {
@@ -125,7 +132,9 @@ function updatePetById(string owner, string petId, PetItem updatedPetItem) retur
         }
         petRecords.put({id: petId, owner: owner, ...updatedPetItem});
         PetRecord petRecord = <PetRecord>petRecords[owner, petId];
-        return getPetDetails(petRecord);
+        Pet pet = getPetDetails(petRecord);
+        enableAlerts(email, owner, pet);
+        return pet;
     }
 }
 
@@ -143,18 +152,21 @@ function deletePetById(string owner, string petId) returns string|()|error {
     }
 }
 
-function addPet(PetItem petItem, string owner) returns Pet|error {
+function addPet(PetItem petItem, string owner, string email) returns Pet|error {
 
     string petId = uuid:createType1AsString();
 
     if (useDB) {
         Pet pet = {id: petId, owner: owner, ...petItem};
         Pet addedPet = check dbAddPet(pet);
+        enableAlerts(email, owner, addedPet);
         return addedPet;
     } else {
         petRecords.put({id: petId, owner: owner, ...petItem});
         PetRecord petRecord = <PetRecord>petRecords[owner, petId];
-        return getPetDetails(petRecord);
+        Pet pet = getPetDetails(petRecord);
+        enableAlerts(email, owner, pet);
+        return pet;
     }
 }
 
@@ -378,4 +390,25 @@ function getDefaultSettings(string email) returns Settings {
 
     Settings settings = {notifications: {enabled: enabled, emailAddress: email}};
     return settings;
+}
+
+function enableAlerts(string email, string owner, Pet pet) {
+
+    Vaccination[]? vaccinations = pet.vaccinations;
+
+    if vaccinations is () {
+        return;
+    }
+
+    foreach var vac in vaccinations {
+
+        if vac.enableAlerts == true {
+            Settings|error settings = getSettings(owner, email);
+            if settings is error {
+                log:printError("Error getting settings", 'error = settings);
+            }
+            break;
+        }
+    }
+
 }
